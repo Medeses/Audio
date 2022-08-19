@@ -102,14 +102,14 @@ private:
     void updateCutFilter(
         ChainType& leftHighPass,
         const CoefficientType& cutCoefficients,
-        const ChainSettings& chainSettings)
+        const Slope& highPassSlope)
     {
         leftHighPass.template setBypassed<0>(true);
         leftHighPass.template setBypassed<1>(true);
         leftHighPass.template setBypassed<2>(true);
         leftHighPass.template setBypassed<3>(true);
 
-        switch (chainSettings.highPassSlope)
+        switch (highPassSlope)
         {
         case Slope_12:
         {
