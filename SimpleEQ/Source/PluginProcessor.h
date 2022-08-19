@@ -98,6 +98,62 @@ private:
 
     static void updateCoefficients(Coefficients& old, const Coefficients& replacements);
 
+    template<typename ChainType, typename CoefficientType>
+    void updateCutFilter(
+        ChainType& leftHighPass,
+        const CoefficientType& cutCoefficients,
+        const ChainSettings& chainSettings)
+    {
+        leftHighPass.template setBypassed<0>(true);
+        leftHighPass.template setBypassed<1>(true);
+        leftHighPass.template setBypassed<2>(true);
+        leftHighPass.template setBypassed<3>(true);
+
+        switch (chainSettings.highPassSlope)
+        {
+        case Slope_12:
+        {
+            *leftHighPass.template get<0>().coefficients = *cutCoefficients[0];
+            leftHighPass.template setBypassed<0>(false);
+            break;
+        }
+
+        case Slope_24:
+        {
+            *leftHighPass.template get<0>().coefficients = *cutCoefficients[0];
+            leftHighPass.template setBypassed<0>(false);
+            *leftHighPass.template get<1>().coefficients = *cutCoefficients[0];
+            leftHighPass.template setBypassed<1>(false);
+            break;
+        }
+
+
+        case Slope_36:
+        {
+            *leftHighPass.template get<0>().coefficients = *cutCoefficients[0];
+            leftHighPass.template setBypassed<0>(false);
+            *leftHighPass.template get<1>().coefficients = *cutCoefficients[0];
+            leftHighPass.template setBypassed<1>(false);
+            *leftHighPass.template get<2>().coefficients = *cutCoefficients[0];
+            leftHighPass.template setBypassed<2>(false);
+            break;
+        }
+
+        case Slope_48:
+        {
+            *leftHighPass.template get<0>().coefficients = *cutCoefficients[0];
+            leftHighPass.template setBypassed<0>(false);
+            *leftHighPass.template get<1>().coefficients = *cutCoefficients[0];
+            leftHighPass.template setBypassed<1>(false);
+            *leftHighPass.template get<2>().coefficients = *cutCoefficients[0];
+            leftHighPass.template setBypassed<2>(false);
+            *leftHighPass.template get<3>().coefficients = *cutCoefficients[0];
+            leftHighPass.template setBypassed<3>(false);
+            break;
+        }
+        }
+    }
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleEQAudioProcessor)
 };
