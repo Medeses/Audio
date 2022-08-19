@@ -109,14 +109,7 @@ void SimpleEQAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
 
 	auto chainSettings = getChainSettings(apvts);
 
-	auto peakCoefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter(
-		sampleRate,
-		chainSettings.peakFreq,
-		chainSettings.peakQ,
-		juce::Decibels::decibelsToGain(chainSettings.peakGainInDecibels));
-
-	*leftChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
-	*rightChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
+	updatePeakFilter(chainSettings);
 
 	auto cutCoefficients = juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(
 		chainSettings.highPassFreq, 
@@ -276,14 +269,7 @@ void SimpleEQAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
 	auto chainSettings = getChainSettings(apvts);
 
-	auto peakCoefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter(
-		getSampleRate(),
-		chainSettings.peakFreq,
-		chainSettings.peakQ,
-		juce::Decibels::decibelsToGain(chainSettings.peakGainInDecibels));
-
-	*leftChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
-	*rightChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
+	updatePeakFilter(chainSettings);
 
 	auto cutCoefficients = juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(
 		chainSettings.highPassFreq,
@@ -430,6 +416,18 @@ void SimpleEQAudioProcessor::setStateInformation(const void* data, int sizeInByt
 	// whose contents will have been created by the getStateInformation() call.
 }
 
+void SimpleEQAudioProcessor::updatePeakFilter(const ChainSettings& chainSettings)
+{
+	auto peakCoefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter(
+		getSampleRate(),
+		chainSettings.peakFreq,
+		chainSettings.peakQ,
+		juce::Decibels::decibelsToGain(chainSettings.peakGainInDecibels));
+
+	updateCoefficients(leftChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
+	updateCoefficients(rightChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
+}
+
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
 {
 	ChainSettings settings;
@@ -445,6 +443,10 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
 	return settings;
 }
 
+void SimpleEQAudioProcessor::updateCoefficients(Coefficients& old, const Coefficients& replacements)
+{
+	*old = *replacements;
+}
 
 juce::AudioProcessorValueTreeState::ParameterLayout SimpleEQAudioProcessor::createParameterLayout()
 {
@@ -482,7 +484,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout SimpleEQAudioProcessor::crea
 	layout.add(std::make_unique < juce::AudioParameterFloat >(
 		"Peak Q",
 		"Peak Q",
-		juce::NormalisableRange<float>(0.1f, 10.f, 0.05f, 1.f),
+		juce::NormalisableRange<float>(0.1f, 10.f, 0.05f, 0.5f),
 		1.f));
 
 	// LowPass/HighPass Options
