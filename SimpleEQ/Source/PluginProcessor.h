@@ -10,11 +10,19 @@
 
 #include <JuceHeader.h>
 
+enum Slope
+{
+    Slope_12,
+    Slope_24,
+    Slope_36,
+    Slope_48,
+};
+
 struct ChainSettings
 {
     float peakFreq{ 0 }, peakGainInDecibels{ 0 }, peakQ{ 1.f };
     float highPassFreq{ 0 }, lowPassFreq{ 0 };
-    float highPassSlope{ 0 }, lowPassSlope{ 0 };
+    Slope highPassSlope{ Slope::Slope_12 }, lowPassSlope{ Slope::Slope_12 };
 };
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
@@ -80,9 +88,9 @@ private:
 
     enum ChainPositions
     {
-        LowCut,
+        HighPass,
         Peak,
-        HighCut
+        LowPass
     };
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleEQAudioProcessor)
