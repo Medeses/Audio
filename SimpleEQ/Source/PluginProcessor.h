@@ -95,8 +95,14 @@ private:
 
     void updatePeakFilter(const ChainSettings& chainSettings);
     using Coefficients = Filter::CoefficientsPtr;
-
     static void updateCoefficients(Coefficients& old, const Coefficients& replacements);
+
+    template<int Index, typename ChainType, typename CoefficientType>
+    void update(ChainType& chain, const CoefficientType& coefficients)
+    {
+        updateCoefficients(chain.template get<Index>().coefficients, coefficients[Index]);
+        chain.template setBypassed<Index>(false);
+    }
 
     template<typename ChainType, typename CoefficientType>
     void updateCutFilter(
@@ -111,47 +117,24 @@ private:
 
         switch (highPassSlope)
         {
-        case Slope_12:
-        {
-            *leftHighPass.template get<0>().coefficients = *cutCoefficients[0];
-            leftHighPass.template setBypassed<0>(false);
-            break;
+            case Slope_48:
+            {
+                update<3>(leftHighPass, cutCoefficients);
+            }
+            case Slope_36:
+            {
+                update<2>(leftHighPass, cutCoefficients);
+            }
+            case Slope_24:
+            {
+                update<1>(leftHighPass, cutCoefficients);
+            }
+            case Slope_12:
+            {
+                update<0>(leftHighPass, cutCoefficients);
+            }
         }
-
-        case Slope_24:
-        {
-            *leftHighPass.template get<0>().coefficients = *cutCoefficients[0];
-            leftHighPass.template setBypassed<0>(false);
-            *leftHighPass.template get<1>().coefficients = *cutCoefficients[0];
-            leftHighPass.template setBypassed<1>(false);
-            break;
-        }
-
-
-        case Slope_36:
-        {
-            *leftHighPass.template get<0>().coefficients = *cutCoefficients[0];
-            leftHighPass.template setBypassed<0>(false);
-            *leftHighPass.template get<1>().coefficients = *cutCoefficients[0];
-            leftHighPass.template setBypassed<1>(false);
-            *leftHighPass.template get<2>().coefficients = *cutCoefficients[0];
-            leftHighPass.template setBypassed<2>(false);
-            break;
-        }
-
-        case Slope_48:
-        {
-            *leftHighPass.template get<0>().coefficients = *cutCoefficients[0];
-            leftHighPass.template setBypassed<0>(false);
-            *leftHighPass.template get<1>().coefficients = *cutCoefficients[0];
-            leftHighPass.template setBypassed<1>(false);
-            *leftHighPass.template get<2>().coefficients = *cutCoefficients[0];
-            leftHighPass.template setBypassed<2>(false);
-            *leftHighPass.template get<3>().coefficients = *cutCoefficients[0];
-            leftHighPass.template setBypassed<3>(false);
-            break;
-        }
-        }
+       
     }
 
     //==============================================================================
