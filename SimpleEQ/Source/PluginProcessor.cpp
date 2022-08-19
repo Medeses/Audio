@@ -105,6 +105,18 @@ void SimpleEQAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBloc
 
 	leftChain.prepare(spec);
 	rightChain.prepare(spec);
+
+
+	auto chainSettings = getChainSettings(apvts);
+
+	auto peakCoefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter(
+		sampleRate,
+		chainSettings.peakFreq,
+		chainSettings.peakQ,
+		juce::Decibels::decibelsToGain(chainSettings.peakGainInDecibels));
+
+	*leftChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
+	*rightChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
 }
 
 void SimpleEQAudioProcessor::releaseResources()
@@ -154,6 +166,17 @@ void SimpleEQAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 	for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
 		buffer.clear(i, 0, buffer.getNumSamples());
 
+	auto chainSettings = getChainSettings(apvts);
+
+	auto peakCoefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter(
+		getSampleRate(),
+		chainSettings.peakFreq,
+		chainSettings.peakQ,
+		juce::Decibels::decibelsToGain(chainSettings.peakGainInDecibels));
+
+	*leftChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
+	*rightChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
+
 	juce::dsp::AudioBlock<float> block(buffer);
 
 	auto leftBlock = block.getSingleChannelBlock(0);
@@ -191,6 +214,22 @@ void SimpleEQAudioProcessor::setStateInformation(const void* data, int sizeInByt
 	// You should use this method to restore your parameters from this memory block,
 	// whose contents will have been created by the getStateInformation() call.
 }
+
+ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
+{
+	ChainSettings settings;
+
+	settings.highPassFreq = apvts.getRawParameterValue("HighPass Freq")->load();
+	settings.lowPassFreq = apvts.getRawParameterValue("LowPass Freq")->load();
+	settings.peakFreq = apvts.getRawParameterValue("Peak Freq")->load();
+	settings.peakGainInDecibels = apvts.getRawParameterValue("Peak Gain")->load();
+	settings.peakQ = apvts.getRawParameterValue("Peak Q")->load();
+	settings.highPassSlope = apvts.getRawParameterValue("HighPass Slope")->load();
+	settings.lowPassSlope = apvts.getRawParameterValue("LowPass Slope")->load();
+
+	return settings;
+}
+
 
 juce::AudioProcessorValueTreeState::ParameterLayout SimpleEQAudioProcessor::createParameterLayout()
 {

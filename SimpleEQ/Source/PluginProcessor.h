@@ -10,6 +10,15 @@
 
 #include <JuceHeader.h>
 
+struct ChainSettings
+{
+    float peakFreq{ 0 }, peakGainInDecibels{ 0 }, peakQ{ 1.f };
+    float highPassFreq{ 0 }, lowPassFreq{ 0 };
+    float highPassSlope{ 0 }, lowPassSlope{ 0 };
+};
+
+ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
+
 //==============================================================================
 /**
 */
@@ -69,6 +78,12 @@ private:
 
     MonoChain leftChain, rightChain;
 
+    enum ChainPositions
+    {
+        LowCut,
+        Peak,
+        HighCut
+    };
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleEQAudioProcessor)
 };
