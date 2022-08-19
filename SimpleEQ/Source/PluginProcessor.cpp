@@ -272,7 +272,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout SimpleEQAudioProcessor::crea
 	// HighPass Freq
 	layout.add(std::make_unique < juce::AudioParameterFloat >(
 		"HighPass Freq",
-		"HighPass",
+		"HighPass Freq",
 		juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f),
 		20.f));
 
