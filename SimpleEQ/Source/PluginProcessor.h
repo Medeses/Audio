@@ -20,8 +20,10 @@ enum Slope
 
 struct ChainSettings
 {
-    float peakFreq{ 0 }, peakGainInDecibels{ 0 }, peakQ{ 1.f };
+    float peakFreq[3]{0}, peakGainInDecibels[3]{0}, peakQ[3]{1.f};
     float highPassFreq{ 0 }, lowPassFreq{ 0 };
+    float lowShelfFreq{ 0 }, lowShelfGainInDecibels{ 0 }, lowShelfQ{1.f};
+    float highShelfFreq{ 0 }, highShelfGainInDecibels{ 0 }, highShelfQ{ 1.f };
     Slope highPassSlope{ Slope::Slope_12 }, lowPassSlope{ Slope::Slope_12 };
 };
 
@@ -82,20 +84,27 @@ private:
 
     using CutFilter = juce::dsp::ProcessorChain<Filter, Filter, Filter, Filter>;
 
-    using MonoChain = juce::dsp::ProcessorChain< CutFilter, Filter, CutFilter>;
+    using MonoChain = juce::dsp::ProcessorChain< CutFilter, Filter, Filter, Filter, Filter, Filter, CutFilter>;
 
     MonoChain leftChain, rightChain;
 
     enum ChainPositions
     {
         HighPass,
-        Peak,
+        LowShelf,
+        Peak1,
+        Peak2,
+        Peak3,
+        HighShelf,
         LowPass
     };
 
-    void updatePeakFilter(const ChainSettings& chainSettings);
+    void updatePeakFilter(const ChainSettings& chainSettings, int filterNr);
     using Coefficients = Filter::CoefficientsPtr;
     static void updateCoefficients(Coefficients& old, const Coefficients& replacements);
+
+    void updateLowShelfFilters(const ChainSettings& chainSettings);
+    void updateHighShelfFilters(const ChainSettings& chainSettings);
 
     template<int Index, typename ChainType, typename CoefficientType>
     void update(ChainType& chain, const CoefficientType& coefficients)
