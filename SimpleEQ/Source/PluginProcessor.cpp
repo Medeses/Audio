@@ -196,40 +196,30 @@ void SimpleEQAudioProcessor::setStateInformation(const void* data, int sizeInByt
 	// whose contents will have been created by the getStateInformation() call.
 }
 
-void SimpleEQAudioProcessor::updatePeakFilter1(const ChainSettings& chainSettings)
+void SimpleEQAudioProcessor::updatePeakFilter(const ChainSettings& chainSettings, int filterNr)
 {
 	auto peakCoefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter(
 		getSampleRate(),
-		chainSettings.peakFreq1,
-		chainSettings.peakQ1,
-		juce::Decibels::decibelsToGain(chainSettings.peakGainInDecibels1));
+		chainSettings.peakFreq[filterNr],
+		chainSettings.peakQ[filterNr],
+		juce::Decibels::decibelsToGain(chainSettings.peakGainInDecibels[filterNr]));
 
-	updateCoefficients(leftChain.get<ChainPositions::Peak1>().coefficients, peakCoefficients);
-	updateCoefficients(rightChain.get<ChainPositions::Peak1>().coefficients, peakCoefficients);
-}
-
-void SimpleEQAudioProcessor::updatePeakFilter2(const ChainSettings& chainSettings)
-{
-	auto peakCoefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter(
-		getSampleRate(),
-		chainSettings.peakFreq2,
-		chainSettings.peakQ2,
-		juce::Decibels::decibelsToGain(chainSettings.peakGainInDecibels2));
-
-	updateCoefficients(leftChain.get<ChainPositions::Peak2>().coefficients, peakCoefficients);
-	updateCoefficients(rightChain.get<ChainPositions::Peak2>().coefficients, peakCoefficients);
-}
-
-void SimpleEQAudioProcessor::updatePeakFilter3(const ChainSettings& chainSettings)
-{
-	auto peakCoefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter(
-		getSampleRate(),
-		chainSettings.peakFreq3,
-		chainSettings.peakQ3,
-		juce::Decibels::decibelsToGain(chainSettings.peakGainInDecibels3));
-
-	updateCoefficients(leftChain.get<ChainPositions::Peak3>().coefficients, peakCoefficients);
-	updateCoefficients(rightChain.get<ChainPositions::Peak3>().coefficients, peakCoefficients);
+	if (filterNr == 0)
+	{
+		updateCoefficients(leftChain.get<ChainPositions::Peak1>().coefficients, peakCoefficients);
+		updateCoefficients(rightChain.get<ChainPositions::Peak1>().coefficients, peakCoefficients);
+	}
+	else if (filterNr == 1)
+	{
+		updateCoefficients(leftChain.get<ChainPositions::Peak2>().coefficients, peakCoefficients);
+		updateCoefficients(rightChain.get<ChainPositions::Peak2>().coefficients, peakCoefficients);
+	}
+	else if (filterNr == 2)
+	{
+		updateCoefficients(leftChain.get<ChainPositions::Peak3>().coefficients, peakCoefficients);
+		updateCoefficients(rightChain.get<ChainPositions::Peak3>().coefficients, peakCoefficients);
+	}
+	
 }
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
@@ -238,15 +228,15 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
 
 	settings.highPassFreq = apvts.getRawParameterValue("HighPass Freq")->load();
 	settings.lowPassFreq = apvts.getRawParameterValue("LowPass Freq")->load();
-	settings.peakFreq1 = apvts.getRawParameterValue("Peak 1 Freq")->load();
-	settings.peakGainInDecibels1 = apvts.getRawParameterValue("Peak 1 Gain")->load();
-	settings.peakQ1 = apvts.getRawParameterValue("Peak 1 Q")->load();
-	settings.peakFreq2 = apvts.getRawParameterValue("Peak 2 Freq")->load();
-	settings.peakGainInDecibels2 = apvts.getRawParameterValue("Peak 2 Gain")->load();
-	settings.peakQ2 = apvts.getRawParameterValue("Peak 2 Q")->load();
-	settings.peakFreq3 = apvts.getRawParameterValue("Peak 3 Freq")->load();
-	settings.peakGainInDecibels3 = apvts.getRawParameterValue("Peak 3 Gain")->load();
-	settings.peakQ3 = apvts.getRawParameterValue("Peak 3 Q")->load();
+	settings.peakFreq[0] = apvts.getRawParameterValue("Peak 1 Freq")->load();
+	settings.peakGainInDecibels[0] = apvts.getRawParameterValue("Peak 1 Gain")->load();
+	settings.peakQ[0] = apvts.getRawParameterValue("Peak 1 Q")->load();
+	settings.peakFreq[1] = apvts.getRawParameterValue("Peak 2 Freq")->load();
+	settings.peakGainInDecibels[1] = apvts.getRawParameterValue("Peak 2 Gain")->load();
+	settings.peakQ[1] = apvts.getRawParameterValue("Peak 2 Q")->load();
+	settings.peakFreq[2] = apvts.getRawParameterValue("Peak 3 Freq")->load();
+	settings.peakGainInDecibels[2] = apvts.getRawParameterValue("Peak 3 Gain")->load();
+	settings.peakQ[2] = apvts.getRawParameterValue("Peak 3 Q")->load();
 	settings.highPassSlope = static_cast<Slope>(apvts.getRawParameterValue("HighPass Slope")->load());
 	settings.lowPassSlope = static_cast<Slope>(apvts.getRawParameterValue("LowPass Slope")->load());
 
@@ -291,9 +281,9 @@ void SimpleEQAudioProcessor::updateFilters()
 	auto chainSettings = getChainSettings(apvts);
 
 	updateHighPassFilters(chainSettings);
-	updatePeakFilter1(chainSettings);
-	updatePeakFilter2(chainSettings);
-	updatePeakFilter3(chainSettings);
+	updatePeakFilter(chainSettings, 0);
+	updatePeakFilter(chainSettings, 1);
+	updatePeakFilter(chainSettings, 2);
 	updateLowPassFilters(chainSettings);
 }
 

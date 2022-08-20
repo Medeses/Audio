@@ -20,9 +20,7 @@ enum Slope
 
 struct ChainSettings
 {
-    float peakFreq1{ 0 }, peakGainInDecibels1{ 0 }, peakQ1{ 1.f };
-    float peakFreq2{ 0 }, peakGainInDecibels2{ 0 }, peakQ2{ 1.f };
-    float peakFreq3{ 0 }, peakGainInDecibels3{ 0 }, peakQ3{ 1.f };
+    float peakFreq[3]{0}, peakGainInDecibels[3]{0}, peakQ[3]{1.f};
     float highPassFreq{ 0 }, lowPassFreq{ 0 };
     Slope highPassSlope{ Slope::Slope_12 }, lowPassSlope{ Slope::Slope_12 };
 };
@@ -97,9 +95,7 @@ private:
         LowPass
     };
 
-    void updatePeakFilter1(const ChainSettings& chainSettings);
-    void updatePeakFilter2(const ChainSettings& chainSettings);
-    void updatePeakFilter3(const ChainSettings& chainSettings);
+    void updatePeakFilter(const ChainSettings& chainSettings, int filterNr);
     using Coefficients = Filter::CoefficientsPtr;
     static void updateCoefficients(Coefficients& old, const Coefficients& replacements);
 
