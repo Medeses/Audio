@@ -46,11 +46,24 @@ SimpleEQAudioProcessorEditor::SimpleEQAudioProcessorEditor (SimpleEQAudioProcess
         addAndMakeVisible(comp);
     }
     
+    const auto& params = audioProcessor.getParameters();
+    for (auto param : params)
+    {
+        param->addListener(this);
+    }
+
+    startTimerHz(60);
+
     setSize (1000, 600);
 }
 
 SimpleEQAudioProcessorEditor::~SimpleEQAudioProcessorEditor()
 {
+    const auto& params = audioProcessor.getParameters();
+    for (auto param : params)
+    {
+        param->removeListener(this);
+    }
 }
 
 //==============================================================================
@@ -126,7 +139,7 @@ void SimpleEQAudioProcessorEditor::paint (juce::Graphics& g)
     const double outputMax = responseArea.getY();
     auto map = [outputMin, outputMax](double input)
     {
-        return jmap(input, -24.0, 24.0, outputMin, outputMax);
+        return jmap(input, -30.0, 30.0, outputMin, outputMax);
     };
 
     responseCurve.startNewSubPath(responseArea.getX(), map(mags.front()));
@@ -201,7 +214,15 @@ void SimpleEQAudioProcessorEditor::timerCallback()
     if (parametersChanged.compareAndSetBool(false, true))
     {
         // Update the monochain
-        // signal a repaint
+        auto chainSettings = getChainSettings(audioProcessor.apvts);
+        auto peakCoefficients1 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 0);
+        updateCoefficients(monoChain.get < ChainPositions::Peak1>().coefficients, peakCoefficients1);
+        auto peakCoefficients2 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 1);
+        updateCoefficients(monoChain.get < ChainPositions::Peak2>().coefficients, peakCoefficients2);
+        auto peakCoefficients3 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 2);
+        updateCoefficients(monoChain.get < ChainPositions::Peak3>().coefficients, peakCoefficients3);
+        // Signal a repaint
+        repaint();
     }
 }
 
