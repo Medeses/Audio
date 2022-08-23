@@ -215,12 +215,22 @@ void SimpleEQAudioProcessorEditor::timerCallback()
     {
         // Update the monochain
         auto chainSettings = getChainSettings(audioProcessor.apvts);
+        // LowShelf
+        auto lowShelfCoefficients = makeLowShelfFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCoefficients(monoChain.get < ChainPositions::LowShelf>().coefficients, lowShelfCoefficients);
+        // Peak 1
         auto peakCoefficients1 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 0);
         updateCoefficients(monoChain.get < ChainPositions::Peak1>().coefficients, peakCoefficients1);
+        // Peak 2
         auto peakCoefficients2 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 1);
         updateCoefficients(monoChain.get < ChainPositions::Peak2>().coefficients, peakCoefficients2);
+        // Peak 3
         auto peakCoefficients3 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 2);
         updateCoefficients(monoChain.get < ChainPositions::Peak3>().coefficients, peakCoefficients3);
+        // HighShelf
+        auto highShelfCoefficients = makeHighShelfFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCoefficients(monoChain.get < ChainPositions::HighShelf>().coefficients, highShelfCoefficients);
+
         // Signal a repaint
         repaint();
     }

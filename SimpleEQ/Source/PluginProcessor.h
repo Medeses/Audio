@@ -50,6 +50,8 @@ using Coefficients = Filter::CoefficientsPtr;
 void updateCoefficients(Coefficients& old, const Coefficients& replacements);
 
 Coefficients makePeakFilter(const ChainSettings& chainSettings, double sampleRate, int filterNr);
+Coefficients makeLowShelfFilter(const ChainSettings& chainSettings, double sampleRate);
+Coefficients makeHighShelfFilter(const ChainSettings& chainSettings, double sampleRate);
 
 //==============================================================================
 /**

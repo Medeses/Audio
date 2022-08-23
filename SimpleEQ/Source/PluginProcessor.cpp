@@ -305,27 +305,37 @@ void SimpleEQAudioProcessor::updateLowPassFilters(const ChainSettings& chainSett
 	updateCutFilter(rightLowPass, LowPassCoefficients, chainSettings.lowPassSlope);
 }
 
-// Low Shelf Filter
-void SimpleEQAudioProcessor::updateLowShelfFilters(const ChainSettings& chainSettings)
-{	
-	auto lowShelfCoefficients = juce::dsp::IIR::Coefficients<float>::makeLowShelf(
-		getSampleRate(),
+Coefficients makeLowShelfFilter(const ChainSettings& chainSettings, double sampleRate)
+{
+	return juce::dsp::IIR::Coefficients<float>::makeLowShelf(
+		sampleRate,
 		chainSettings.lowShelfFreq,
 		chainSettings.lowShelfQ,
 		juce::Decibels::decibelsToGain(chainSettings.lowShelfGainInDecibels));
+}
+
+// Low Shelf Filter
+void SimpleEQAudioProcessor::updateLowShelfFilters(const ChainSettings& chainSettings)
+{	
+	auto lowShelfCoefficients = makeLowShelfFilter(chainSettings, getSampleRate());
 
 	updateCoefficients(leftChain.get<ChainPositions::LowShelf>().coefficients, lowShelfCoefficients);
 	updateCoefficients(rightChain.get<ChainPositions::LowShelf>().coefficients, lowShelfCoefficients);
 }
 
-// High Shelf
-void SimpleEQAudioProcessor::updateHighShelfFilters(const ChainSettings& chainSettings)
+Coefficients makeHighShelfFilter(const ChainSettings& chainSettings, double sampleRate)
 {
-	auto highShelfCoefficients = juce::dsp::IIR::Coefficients<float>::makeHighShelf(
-		getSampleRate(),
+	return juce::dsp::IIR::Coefficients<float>::makeHighShelf(
+		sampleRate,
 		chainSettings.highShelfFreq,
 		chainSettings.highShelfQ,
 		juce::Decibels::decibelsToGain(chainSettings.highShelfGainInDecibels));
+}
+
+// High Shelf
+void SimpleEQAudioProcessor::updateHighShelfFilters(const ChainSettings& chainSettings)
+{
+	auto highShelfCoefficients = makeHighShelfFilter(chainSettings, getSampleRate());
 
 	updateCoefficients(leftChain.get<ChainPositions::HighShelf>().coefficients, highShelfCoefficients);
 	updateCoefficients(rightChain.get<ChainPositions::HighShelf>().coefficients, highShelfCoefficients);
@@ -380,7 +390,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout SimpleEQAudioProcessor::crea
 	layout.add(std::make_unique < juce::AudioParameterFloat >(
 		"LowShelf Q",
 		"LowShelf Q",
-		juce::NormalisableRange<float>(0.1f, 10.f, 0.05f, 0.5f),
+		juce::NormalisableRange<float>(0.1f, 5.f, 0.05f, 0.5f),
 		1.f));
 
 	// Peak 1 Freq
@@ -464,7 +474,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout SimpleEQAudioProcessor::crea
 	layout.add(std::make_unique < juce::AudioParameterFloat >(
 		"HighShelf Q",
 		"HighShelf Q",
-		juce::NormalisableRange<float>(0.1f, 10.f, 0.05f, 0.5f),
+		juce::NormalisableRange<float>(0.1f, 5.f, 0.05f, 0.5f),
 		1.f));
 
 	// LowPass/HighPass Options
