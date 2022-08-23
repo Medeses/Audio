@@ -24,14 +24,14 @@ struct CustomRotarySlider : juce::Slider
 //==============================================================================
 /**
 */
-class SimpleEQAudioProcessorEditor  : public juce::AudioProcessorEditor
+class SimpleEQAudioProcessorEditor : public juce::AudioProcessorEditor
 {
 public:
-    SimpleEQAudioProcessorEditor (SimpleEQAudioProcessor&);
+    SimpleEQAudioProcessorEditor(SimpleEQAudioProcessor&);
     ~SimpleEQAudioProcessorEditor() override;
 
     //==============================================================================
-    void paint (juce::Graphics&) override;
+    void paint(juce::Graphics&) override;
     void resized() override;
 
 private:
@@ -60,7 +60,32 @@ private:
         highShelfGainSlider,
         highShelfQSlider;
 
+    using APVTS = juce::AudioProcessorValueTreeState;
+    using Attachment = APVTS::SliderAttachment;
+
+    Attachment 
+        peak1FreqSliderAttachment,
+        peak1GainSliderAttachment,
+        peak1QSliderAttachment,
+        peak2FreqSliderAttachment,
+        peak2GainSliderAttachment,
+        peak2QSliderAttachment,
+        peak3FreqSliderAttachment,
+        peak3GainSliderAttachment,
+        peak3QSliderAttachment,
+        highPassFreqSliderAttachment,
+        highPassSlopeSliderAttachment,
+        lowPassFreqSliderAttachment,
+        lowPassSlopeSliderAttachment,
+        lowShelfFreqSliderAttachment,
+        lowShelfGainSliderAttachment,
+        lowShelfQSliderAttachment,
+        highShelfFreqSliderAttachment,
+        highShelfGainSliderAttachment,
+        highShelfQSliderAttachment;
+
+
     std::vector<juce::Component*> getComps();
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleEQAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SimpleEQAudioProcessorEditor)
 };

@@ -11,7 +11,33 @@
 
 //==============================================================================
 SimpleEQAudioProcessorEditor::SimpleEQAudioProcessorEditor (SimpleEQAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p)
+    : AudioProcessorEditor (&p), audioProcessor (p),
+    // HighPass
+    highPassFreqSliderAttachment(audioProcessor.apvts, "HighPass Freq", highPassFreqSlider),
+    highPassSlopeSliderAttachment(audioProcessor.apvts, "HighPass Slope", highPassSlopeSlider),
+    // LowShelf
+    lowShelfFreqSliderAttachment(audioProcessor.apvts, "LowShelf Freq", lowShelfFreqSlider),
+    lowShelfGainSliderAttachment(audioProcessor.apvts, "LowShelf Gain", lowShelfGainSlider),
+    lowShelfQSliderAttachment(audioProcessor.apvts, "LowShelf Q", lowShelfQSlider),
+    // Peak 1
+    peak1FreqSliderAttachment(audioProcessor.apvts, "Peak 1 Freq", peak1FreqSlider),
+    peak1GainSliderAttachment(audioProcessor.apvts, "Peak 1 Gain", peak1GainSlider),
+    peak1QSliderAttachment(audioProcessor.apvts, "Peak 1 Q", peak1QSlider),
+    // Peak 2
+    peak2FreqSliderAttachment(audioProcessor.apvts, "Peak 2 Freq", peak2FreqSlider),
+    peak2GainSliderAttachment(audioProcessor.apvts, "Peak 2 Gain", peak2GainSlider),
+    peak2QSliderAttachment(audioProcessor.apvts, "Peak 2 Q", peak2QSlider),
+    // Peak 3
+    peak3FreqSliderAttachment(audioProcessor.apvts, "Peak 3 Freq", peak3FreqSlider),
+    peak3GainSliderAttachment(audioProcessor.apvts, "Peak 3 Gain", peak3GainSlider),
+    peak3QSliderAttachment(audioProcessor.apvts, "Peak 3 Q", peak3QSlider),
+    // HighShelf
+    highShelfFreqSliderAttachment(audioProcessor.apvts, "HighShelf Freq", highShelfFreqSlider),
+    highShelfGainSliderAttachment(audioProcessor.apvts, "HighShelf Gain", highShelfGainSlider),
+    highShelfQSliderAttachment(audioProcessor.apvts, "HighShelf Q", highShelfQSlider),
+    // LowPass
+    lowPassFreqSliderAttachment(audioProcessor.apvts, "LowPass Freq", lowPassFreqSlider),
+    lowPassSlopeSliderAttachment(audioProcessor.apvts, "LowPass Slope", lowPassSlopeSlider)
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
