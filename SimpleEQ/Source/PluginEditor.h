@@ -11,17 +11,27 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 
+struct CustomRotarySlider : juce::Slider
+{
+    CustomRotarySlider() : juce::Slider(
+        juce::Slider::SliderStyle::RotaryHorizontalVerticalDrag,
+        juce::Slider::TextEntryBoxPosition::NoTextBox)
+    {
+
+    }
+};
+
 //==============================================================================
 /**
 */
-class SimpleEQAudioProcessorEditor  : public juce::AudioProcessorEditor
+class SimpleEQAudioProcessorEditor : public juce::AudioProcessorEditor
 {
 public:
-    SimpleEQAudioProcessorEditor (SimpleEQAudioProcessor&);
+    SimpleEQAudioProcessorEditor(SimpleEQAudioProcessor&);
     ~SimpleEQAudioProcessorEditor() override;
 
     //==============================================================================
-    void paint (juce::Graphics&) override;
+    void paint(juce::Graphics&) override;
     void resized() override;
 
 private:
@@ -29,5 +39,53 @@ private:
     // access the processor object that created it.
     SimpleEQAudioProcessor& audioProcessor;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleEQAudioProcessorEditor)
+    CustomRotarySlider
+        peak1FreqSlider,
+        peak1GainSlider,
+        peak1QSlider,
+        peak2FreqSlider,
+        peak2GainSlider,
+        peak2QSlider,
+        peak3FreqSlider,
+        peak3GainSlider,
+        peak3QSlider,
+        highPassFreqSlider,
+        highPassSlopeSlider,
+        lowPassFreqSlider,
+        lowPassSlopeSlider,
+        lowShelfFreqSlider,
+        lowShelfGainSlider,
+        lowShelfQSlider,
+        highShelfFreqSlider,
+        highShelfGainSlider,
+        highShelfQSlider;
+
+    using APVTS = juce::AudioProcessorValueTreeState;
+    using Attachment = APVTS::SliderAttachment;
+
+    Attachment 
+        peak1FreqSliderAttachment,
+        peak1GainSliderAttachment,
+        peak1QSliderAttachment,
+        peak2FreqSliderAttachment,
+        peak2GainSliderAttachment,
+        peak2QSliderAttachment,
+        peak3FreqSliderAttachment,
+        peak3GainSliderAttachment,
+        peak3QSliderAttachment,
+        highPassFreqSliderAttachment,
+        highPassSlopeSliderAttachment,
+        lowPassFreqSliderAttachment,
+        lowPassSlopeSliderAttachment,
+        lowShelfFreqSliderAttachment,
+        lowShelfGainSliderAttachment,
+        lowShelfQSliderAttachment,
+        highShelfFreqSliderAttachment,
+        highShelfGainSliderAttachment,
+        highShelfQSliderAttachment;
+
+
+    std::vector<juce::Component*> getComps();
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SimpleEQAudioProcessorEditor)
 };
