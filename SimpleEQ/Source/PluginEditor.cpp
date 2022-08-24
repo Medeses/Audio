@@ -9,9 +9,157 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+ResponseCurveComponent::ResponseCurveComponent(SimpleEQAudioProcessor& p) : audioProcessor(p)
+{
+    const auto& params = audioProcessor.getParameters();
+    for (auto param : params)
+    {
+        param->addListener(this);
+    }
+
+    startTimerHz(60);
+}
+
+ResponseCurveComponent::~ResponseCurveComponent()
+{
+    const auto& params = audioProcessor.getParameters();
+    for (auto param : params)
+    {
+        param->removeListener(this);
+    }
+}
+
+void ResponseCurveComponent::parameterValueChanged(int parameterIndex, float newValue)
+{
+    parametersChanged.set(true);
+}
+
+void ResponseCurveComponent::timerCallback()
+{
+    if (parametersChanged.compareAndSetBool(false, true))
+    {
+        // Update the monochain
+        auto chainSettings = getChainSettings(audioProcessor.apvts);
+        // HighPass
+        auto highPassCoefficients = makeHighPassFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCutFilter(monoChain.get < ChainPositions::HighPass>(), highPassCoefficients, chainSettings.highPassSlope);
+        // LowShelf
+        auto lowShelfCoefficients = makeLowShelfFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCoefficients(monoChain.get < ChainPositions::LowShelf>().coefficients, lowShelfCoefficients);
+        // Peak 1
+        auto peakCoefficients1 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 0);
+        updateCoefficients(monoChain.get < ChainPositions::Peak1>().coefficients, peakCoefficients1);
+        // Peak 2
+        auto peakCoefficients2 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 1);
+        updateCoefficients(monoChain.get < ChainPositions::Peak2>().coefficients, peakCoefficients2);
+        // Peak 3
+        auto peakCoefficients3 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 2);
+        updateCoefficients(monoChain.get < ChainPositions::Peak3>().coefficients, peakCoefficients3);
+        // HighShelf
+        auto highShelfCoefficients = makeHighShelfFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCoefficients(monoChain.get < ChainPositions::HighShelf>().coefficients, highShelfCoefficients);
+        // LowPass
+        auto lowPassCoefficients = makeLowPassFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCutFilter(monoChain.get < ChainPositions::LowPass>(), lowPassCoefficients, chainSettings.lowPassSlope);
+
+        // Signal a repaint
+        repaint();
+    }
+}
+
+void ResponseCurveComponent::paint(juce::Graphics& g)
+{
+    using namespace juce;
+    // (Our component is opaque, so we must completely fill the background with a solid colour)
+    g.fillAll(Colours::black);
+
+    auto responseArea = getLocalBounds();
+
+    auto w = responseArea.getWidth();
+
+    auto& highpass = monoChain.get<ChainPositions::HighPass>();
+    auto& lowshelf = monoChain.get<ChainPositions::LowShelf>();
+    auto& peak1 = monoChain.get<ChainPositions::Peak1>();
+    auto& peak2 = monoChain.get<ChainPositions::Peak2>();
+    auto& peak3 = monoChain.get<ChainPositions::Peak3>();
+    auto& highshelf = monoChain.get<ChainPositions::HighShelf>();
+    auto& lowpass = monoChain.get<ChainPositions::LowPass>();
+
+    auto sampleRate = audioProcessor.getSampleRate();
+
+    std::vector<double> mags;
+
+    mags.resize(w);
+    for (int i = 0; i < w; ++i)
+    {
+        double mag = 1.f;
+        auto freq = mapToLog10(double(i) / double(w), 20.0, 20000.0);
+
+        // HighPass
+        if (!highpass.isBypassed<0>())
+            mag *= highpass.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        if (!highpass.isBypassed<1>())
+            mag *= highpass.get<1>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        if (!highpass.isBypassed<2>())
+            mag *= highpass.get<2>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        if (!highpass.isBypassed<3>())
+            mag *= highpass.get<3>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        // LowShelf
+        if (!monoChain.isBypassed<ChainPositions::LowShelf>())
+            mag *= lowshelf.coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        // Peak 1
+        if (!monoChain.isBypassed<ChainPositions::Peak1>())
+            mag *= peak1.coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        // Peak 2
+        if (!monoChain.isBypassed<ChainPositions::Peak2>())
+            mag *= peak2.coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        // Peak 3
+        if (!monoChain.isBypassed<ChainPositions::Peak3>())
+            mag *= peak3.coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        // HighShelf
+        if (!monoChain.isBypassed<ChainPositions::HighShelf>())
+            mag *= highshelf.coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        // LowPass
+        if (!lowpass.isBypassed<0>())
+            mag *= lowpass.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        if (!lowpass.isBypassed<1>())
+            mag *= lowpass.get<1>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        if (!lowpass.isBypassed<2>())
+            mag *= lowpass.get<2>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        if (!lowpass.isBypassed<3>())
+            mag *= lowpass.get<3>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+
+        mags[i] = Decibels::gainToDecibels(mag);
+    }
+
+    Path responseCurve;
+
+    const double outputMin = responseArea.getBottom();
+    const double outputMax = responseArea.getY();
+    auto map = [outputMin, outputMax](double input)
+    {
+        return jmap(input, -30.0, 30.0, outputMin, outputMax);
+    };
+
+    responseCurve.startNewSubPath(responseArea.getX(), map(mags.front()));
+
+    for (size_t i = 1; i < mags.size(); ++i)
+    {
+        responseCurve.lineTo(responseArea.getX() + i, map(mags[i]));
+    }
+
+    g.setColour(Colours::orange);
+    g.drawRoundedRectangle(responseArea.toFloat(), 4.f, 1.f);
+
+    g.setColour(Colours::white);
+    g.strokePath(responseCurve, PathStrokeType(2.f));
+}
+
 //==============================================================================
 SimpleEQAudioProcessorEditor::SimpleEQAudioProcessorEditor (SimpleEQAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p),
+    // ResponseCurveComponent
+    responseCurveComponent(audioProcessor),
     // HighPass
     highPassFreqSliderAttachment(audioProcessor.apvts, "HighPass Freq", highPassFreqSlider),
     highPassSlopeSliderAttachment(audioProcessor.apvts, "HighPass Slope", highPassSlopeSlider),
@@ -45,23 +193,19 @@ SimpleEQAudioProcessorEditor::SimpleEQAudioProcessorEditor (SimpleEQAudioProcess
     {
         addAndMakeVisible(comp);
     }
-    
+
     setSize (1000, 600);
 }
 
 SimpleEQAudioProcessorEditor::~SimpleEQAudioProcessorEditor()
 {
+
 }
 
 //==============================================================================
 void SimpleEQAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
-    /*g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 
-    g.setColour (juce::Colours::white);
-    g.setFont (15.0f);
-    g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);*/
 }
 
 void SimpleEQAudioProcessorEditor::resized()
@@ -71,6 +215,8 @@ void SimpleEQAudioProcessorEditor::resized()
 
     auto bounds = getLocalBounds();
     auto responseArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
+
+    responseCurveComponent.setBounds(responseArea);
 
     // Set up areas
     auto highPassArea = bounds.removeFromLeft(bounds.getWidth() * 1 / 7);
@@ -109,7 +255,6 @@ void SimpleEQAudioProcessorEditor::resized()
     lowPassSlopeSlider.setBounds(lowPassArea);
 }
 
-
 std::vector<juce::Component*> SimpleEQAudioProcessorEditor::getComps()
 {
     return
@@ -132,6 +277,7 @@ std::vector<juce::Component*> SimpleEQAudioProcessorEditor::getComps()
         &lowShelfQSlider,
         &highShelfFreqSlider,
         &highShelfGainSlider,
-        &highShelfQSlider
+        &highShelfQSlider,
+        &responseCurveComponent
     };
 }

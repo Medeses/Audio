@@ -29,6 +29,86 @@ struct ChainSettings
 
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
 
+using Filter = juce::dsp::IIR::Filter<float>;
+
+using CutFilter = juce::dsp::ProcessorChain<Filter, Filter, Filter, Filter>;
+
+using MonoChain = juce::dsp::ProcessorChain< CutFilter, Filter, Filter, Filter, Filter, Filter, CutFilter>;
+
+enum ChainPositions
+{
+    HighPass,
+    LowShelf,
+    Peak1,
+    Peak2,
+    Peak3,
+    HighShelf,
+    LowPass
+};
+
+using Coefficients = Filter::CoefficientsPtr;
+void updateCoefficients(Coefficients& old, const Coefficients& replacements);
+
+Coefficients makePeakFilter(const ChainSettings& chainSettings, double sampleRate, int filterNr);
+Coefficients makeLowShelfFilter(const ChainSettings& chainSettings, double sampleRate);
+Coefficients makeHighShelfFilter(const ChainSettings& chainSettings, double sampleRate);
+
+template<int Index, typename ChainType, typename CoefficientType>
+void update(ChainType& chain, const CoefficientType& coefficients)
+{
+    updateCoefficients(chain.template get<Index>().coefficients, coefficients[Index]);
+    chain.template setBypassed<Index>(false);
+}
+
+template<typename ChainType, typename CoefficientType>
+void updateCutFilter(
+    ChainType& chain,
+    const CoefficientType& cutCoefficients,
+    const Slope& highPassSlope)
+{
+    chain.template setBypassed<0>(true);
+    chain.template setBypassed<1>(true);
+    chain.template setBypassed<2>(true);
+    chain.template setBypassed<3>(true);
+
+    switch (highPassSlope)
+    {
+    case Slope_48:
+    {
+        update<3>(chain, cutCoefficients);
+    }
+    case Slope_36:
+    {
+        update<2>(chain, cutCoefficients);
+    }
+    case Slope_24:
+    {
+        update<1>(chain, cutCoefficients);
+    }
+    case Slope_12:
+    {
+        update<0>(chain, cutCoefficients);
+    }
+    }
+
+}
+
+inline auto makeHighPassFilter(const ChainSettings& chainSettings, double sampleRate)
+{
+    return juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(
+        chainSettings.highPassFreq,
+        sampleRate,
+        2 * (chainSettings.highPassSlope + 1));
+}
+
+inline auto makeLowPassFilter(const ChainSettings& chainSettings, double sampleRate)
+{
+    return juce::dsp::FilterDesign<float>::designIIRLowpassHighOrderButterworthMethod(
+        chainSettings.lowPassFreq,
+        sampleRate,
+        2 * (chainSettings.lowPassSlope + 1));
+}
+
 //==============================================================================
 /**
 */
@@ -79,72 +159,12 @@ public:
     juce::AudioProcessorValueTreeState apvts{ *this, nullptr, "Parameters", createParameterLayout()};
 
 private:
-
-    using Filter = juce::dsp::IIR::Filter<float>;
-
-    using CutFilter = juce::dsp::ProcessorChain<Filter, Filter, Filter, Filter>;
-
-    using MonoChain = juce::dsp::ProcessorChain< CutFilter, Filter, Filter, Filter, Filter, Filter, CutFilter>;
-
     MonoChain leftChain, rightChain;
 
-    enum ChainPositions
-    {
-        HighPass,
-        LowShelf,
-        Peak1,
-        Peak2,
-        Peak3,
-        HighShelf,
-        LowPass
-    };
-
     void updatePeakFilter(const ChainSettings& chainSettings, int filterNr);
-    using Coefficients = Filter::CoefficientsPtr;
-    static void updateCoefficients(Coefficients& old, const Coefficients& replacements);
 
     void updateLowShelfFilters(const ChainSettings& chainSettings);
     void updateHighShelfFilters(const ChainSettings& chainSettings);
-
-    template<int Index, typename ChainType, typename CoefficientType>
-    void update(ChainType& chain, const CoefficientType& coefficients)
-    {
-        updateCoefficients(chain.template get<Index>().coefficients, coefficients[Index]);
-        chain.template setBypassed<Index>(false);
-    }
-
-    template<typename ChainType, typename CoefficientType>
-    void updateCutFilter(
-        ChainType& leftHighPass,
-        const CoefficientType& cutCoefficients,
-        const Slope& highPassSlope)
-    {
-        leftHighPass.template setBypassed<0>(true);
-        leftHighPass.template setBypassed<1>(true);
-        leftHighPass.template setBypassed<2>(true);
-        leftHighPass.template setBypassed<3>(true);
-
-        switch (highPassSlope)
-        {
-            case Slope_48:
-            {
-                update<3>(leftHighPass, cutCoefficients);
-            }
-            case Slope_36:
-            {
-                update<2>(leftHighPass, cutCoefficients);
-            }
-            case Slope_24:
-            {
-                update<1>(leftHighPass, cutCoefficients);
-            }
-            case Slope_12:
-            {
-                update<0>(leftHighPass, cutCoefficients);
-            }
-        }
-       
-    }
 
     void updateHighPassFilters(const ChainSettings& chainSettings);
     void updateLowPassFilters(const ChainSettings& chainSettings);
