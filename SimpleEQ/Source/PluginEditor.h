@@ -21,12 +21,31 @@ struct CustomRotarySlider : juce::Slider
     }
 };
 
+struct ResponseCurveComponent : juce::Component,
+    juce::AudioProcessorParameter::Listener,
+    juce::Timer
+{
+    ResponseCurveComponent(SimpleEQAudioProcessor&);
+    ~ResponseCurveComponent();
+
+    void parameterValueChanged(int parameterIndex, float newValue) override;
+
+    void parameterGestureChanged(int parameterIndex, bool gestureIsStarting) override { }
+
+    void timerCallback() override;
+
+    void paint(juce::Graphics& g) override;
+private:
+    SimpleEQAudioProcessor& audioProcessor;
+    juce::Atomic<bool> parametersChanged{ false };
+
+    MonoChain monoChain;
+};
+
 //==============================================================================
 /**
 */
-class SimpleEQAudioProcessorEditor : public juce::AudioProcessorEditor,
-    juce::AudioProcessorParameter::Listener,
-    juce::Timer
+class SimpleEQAudioProcessorEditor : public juce::AudioProcessorEditor
 {
 public:
     SimpleEQAudioProcessorEditor(SimpleEQAudioProcessor&);
@@ -36,18 +55,10 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
 
-    void parameterValueChanged(int parameterIndex, float newValue) override;
-
-    void parameterGestureChanged(int parameterIndex, bool gestureIsStarting) override { }
-
-    void timerCallback() override;
-
 private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     SimpleEQAudioProcessor& audioProcessor;
-
-    juce::Atomic<bool> parametersChanged{ false };
 
     CustomRotarySlider
         peak1FreqSlider,
@@ -94,10 +105,9 @@ private:
         highShelfGainSliderAttachment,
         highShelfQSliderAttachment;
 
+    ResponseCurveComponent responseCurveComponent;
 
     std::vector<juce::Component*> getComps();
-
-    MonoChain monoChain;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SimpleEQAudioProcessorEditor)
 };

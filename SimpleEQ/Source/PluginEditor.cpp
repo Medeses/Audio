@@ -9,43 +9,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-//==============================================================================
-SimpleEQAudioProcessorEditor::SimpleEQAudioProcessorEditor (SimpleEQAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p),
-    // HighPass
-    highPassFreqSliderAttachment(audioProcessor.apvts, "HighPass Freq", highPassFreqSlider),
-    highPassSlopeSliderAttachment(audioProcessor.apvts, "HighPass Slope", highPassSlopeSlider),
-    // LowShelf
-    lowShelfFreqSliderAttachment(audioProcessor.apvts, "LowShelf Freq", lowShelfFreqSlider),
-    lowShelfGainSliderAttachment(audioProcessor.apvts, "LowShelf Gain", lowShelfGainSlider),
-    lowShelfQSliderAttachment(audioProcessor.apvts, "LowShelf Q", lowShelfQSlider),
-    // Peak 1
-    peak1FreqSliderAttachment(audioProcessor.apvts, "Peak 1 Freq", peak1FreqSlider),
-    peak1GainSliderAttachment(audioProcessor.apvts, "Peak 1 Gain", peak1GainSlider),
-    peak1QSliderAttachment(audioProcessor.apvts, "Peak 1 Q", peak1QSlider),
-    // Peak 2
-    peak2FreqSliderAttachment(audioProcessor.apvts, "Peak 2 Freq", peak2FreqSlider),
-    peak2GainSliderAttachment(audioProcessor.apvts, "Peak 2 Gain", peak2GainSlider),
-    peak2QSliderAttachment(audioProcessor.apvts, "Peak 2 Q", peak2QSlider),
-    // Peak 3
-    peak3FreqSliderAttachment(audioProcessor.apvts, "Peak 3 Freq", peak3FreqSlider),
-    peak3GainSliderAttachment(audioProcessor.apvts, "Peak 3 Gain", peak3GainSlider),
-    peak3QSliderAttachment(audioProcessor.apvts, "Peak 3 Q", peak3QSlider),
-    // HighShelf
-    highShelfFreqSliderAttachment(audioProcessor.apvts, "HighShelf Freq", highShelfFreqSlider),
-    highShelfGainSliderAttachment(audioProcessor.apvts, "HighShelf Gain", highShelfGainSlider),
-    highShelfQSliderAttachment(audioProcessor.apvts, "HighShelf Q", highShelfQSlider),
-    // LowPass
-    lowPassFreqSliderAttachment(audioProcessor.apvts, "LowPass Freq", lowPassFreqSlider),
-    lowPassSlopeSliderAttachment(audioProcessor.apvts, "LowPass Slope", lowPassSlopeSlider)
+ResponseCurveComponent::ResponseCurveComponent(SimpleEQAudioProcessor& p) : audioProcessor(p)
 {
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
-    for (auto* comp : getComps())
-    {
-        addAndMakeVisible(comp);
-    }
-    
     const auto& params = audioProcessor.getParameters();
     for (auto param : params)
     {
@@ -53,11 +18,9 @@ SimpleEQAudioProcessorEditor::SimpleEQAudioProcessorEditor (SimpleEQAudioProcess
     }
 
     startTimerHz(60);
-
-    setSize (1000, 600);
 }
 
-SimpleEQAudioProcessorEditor::~SimpleEQAudioProcessorEditor()
+ResponseCurveComponent::~ResponseCurveComponent()
 {
     const auto& params = audioProcessor.getParameters();
     for (auto param : params)
@@ -66,15 +29,51 @@ SimpleEQAudioProcessorEditor::~SimpleEQAudioProcessorEditor()
     }
 }
 
-//==============================================================================
-void SimpleEQAudioProcessorEditor::paint (juce::Graphics& g)
+void ResponseCurveComponent::parameterValueChanged(int parameterIndex, float newValue)
+{
+    parametersChanged.set(true);
+}
+
+void ResponseCurveComponent::timerCallback()
+{
+    if (parametersChanged.compareAndSetBool(false, true))
+    {
+        // Update the monochain
+        auto chainSettings = getChainSettings(audioProcessor.apvts);
+        // HighPass
+        auto highPassCoefficients = makeHighPassFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCutFilter(monoChain.get < ChainPositions::HighPass>(), highPassCoefficients, chainSettings.highPassSlope);
+        // LowShelf
+        auto lowShelfCoefficients = makeLowShelfFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCoefficients(monoChain.get < ChainPositions::LowShelf>().coefficients, lowShelfCoefficients);
+        // Peak 1
+        auto peakCoefficients1 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 0);
+        updateCoefficients(monoChain.get < ChainPositions::Peak1>().coefficients, peakCoefficients1);
+        // Peak 2
+        auto peakCoefficients2 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 1);
+        updateCoefficients(monoChain.get < ChainPositions::Peak2>().coefficients, peakCoefficients2);
+        // Peak 3
+        auto peakCoefficients3 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 2);
+        updateCoefficients(monoChain.get < ChainPositions::Peak3>().coefficients, peakCoefficients3);
+        // HighShelf
+        auto highShelfCoefficients = makeHighShelfFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCoefficients(monoChain.get < ChainPositions::HighShelf>().coefficients, highShelfCoefficients);
+        // LowPass
+        auto lowPassCoefficients = makeLowPassFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCutFilter(monoChain.get < ChainPositions::LowPass>(), lowPassCoefficients, chainSettings.lowPassSlope);
+
+        // Signal a repaint
+        repaint();
+    }
+}
+
+void ResponseCurveComponent::paint(juce::Graphics& g)
 {
     using namespace juce;
     // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll (Colours::black);
+    g.fillAll(Colours::black);
 
-    auto bounds = getLocalBounds();
-    auto responseArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
+    auto responseArea = getLocalBounds();
 
     auto w = responseArea.getWidth();
 
@@ -151,11 +150,61 @@ void SimpleEQAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour(Colours::orange);
     g.drawRoundedRectangle(responseArea.toFloat(), 4.f, 1.f);
-    
+
     g.setColour(Colours::white);
     g.strokePath(responseCurve, PathStrokeType(2.f));
+}
 
+//==============================================================================
+SimpleEQAudioProcessorEditor::SimpleEQAudioProcessorEditor (SimpleEQAudioProcessor& p)
+    : AudioProcessorEditor (&p), audioProcessor (p),
+    // ResponseCurveComponent
+    responseCurveComponent(audioProcessor),
+    // HighPass
+    highPassFreqSliderAttachment(audioProcessor.apvts, "HighPass Freq", highPassFreqSlider),
+    highPassSlopeSliderAttachment(audioProcessor.apvts, "HighPass Slope", highPassSlopeSlider),
+    // LowShelf
+    lowShelfFreqSliderAttachment(audioProcessor.apvts, "LowShelf Freq", lowShelfFreqSlider),
+    lowShelfGainSliderAttachment(audioProcessor.apvts, "LowShelf Gain", lowShelfGainSlider),
+    lowShelfQSliderAttachment(audioProcessor.apvts, "LowShelf Q", lowShelfQSlider),
+    // Peak 1
+    peak1FreqSliderAttachment(audioProcessor.apvts, "Peak 1 Freq", peak1FreqSlider),
+    peak1GainSliderAttachment(audioProcessor.apvts, "Peak 1 Gain", peak1GainSlider),
+    peak1QSliderAttachment(audioProcessor.apvts, "Peak 1 Q", peak1QSlider),
+    // Peak 2
+    peak2FreqSliderAttachment(audioProcessor.apvts, "Peak 2 Freq", peak2FreqSlider),
+    peak2GainSliderAttachment(audioProcessor.apvts, "Peak 2 Gain", peak2GainSlider),
+    peak2QSliderAttachment(audioProcessor.apvts, "Peak 2 Q", peak2QSlider),
+    // Peak 3
+    peak3FreqSliderAttachment(audioProcessor.apvts, "Peak 3 Freq", peak3FreqSlider),
+    peak3GainSliderAttachment(audioProcessor.apvts, "Peak 3 Gain", peak3GainSlider),
+    peak3QSliderAttachment(audioProcessor.apvts, "Peak 3 Q", peak3QSlider),
+    // HighShelf
+    highShelfFreqSliderAttachment(audioProcessor.apvts, "HighShelf Freq", highShelfFreqSlider),
+    highShelfGainSliderAttachment(audioProcessor.apvts, "HighShelf Gain", highShelfGainSlider),
+    highShelfQSliderAttachment(audioProcessor.apvts, "HighShelf Q", highShelfQSlider),
+    // LowPass
+    lowPassFreqSliderAttachment(audioProcessor.apvts, "LowPass Freq", lowPassFreqSlider),
+    lowPassSlopeSliderAttachment(audioProcessor.apvts, "LowPass Slope", lowPassSlopeSlider)
+{
+    // Make sure that before the constructor has finished, you've set the
+    // editor's size to whatever you need it to be.
+    for (auto* comp : getComps())
+    {
+        addAndMakeVisible(comp);
+    }
 
+    setSize (1000, 600);
+}
+
+SimpleEQAudioProcessorEditor::~SimpleEQAudioProcessorEditor()
+{
+
+}
+
+//==============================================================================
+void SimpleEQAudioProcessorEditor::paint (juce::Graphics& g)
+{
 
 }
 
@@ -166,6 +215,8 @@ void SimpleEQAudioProcessorEditor::resized()
 
     auto bounds = getLocalBounds();
     auto responseArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
+
+    responseCurveComponent.setBounds(responseArea);
 
     // Set up areas
     auto highPassArea = bounds.removeFromLeft(bounds.getWidth() * 1 / 7);
@@ -204,45 +255,6 @@ void SimpleEQAudioProcessorEditor::resized()
     lowPassSlopeSlider.setBounds(lowPassArea);
 }
 
-void SimpleEQAudioProcessorEditor::parameterValueChanged(int parameterIndex, float newValue)
-{
-    parametersChanged.set(true);
-}
-
-void SimpleEQAudioProcessorEditor::timerCallback()
-{
-    if (parametersChanged.compareAndSetBool(false, true))
-    {
-        // Update the monochain
-        auto chainSettings = getChainSettings(audioProcessor.apvts);
-        // HighPass
-        auto highPassCoefficients = makeHighPassFilter(chainSettings, audioProcessor.getSampleRate());
-        updateCutFilter(monoChain.get < ChainPositions::HighPass>(), highPassCoefficients, chainSettings.highPassSlope);
-        // LowShelf
-        auto lowShelfCoefficients = makeLowShelfFilter(chainSettings, audioProcessor.getSampleRate());
-        updateCoefficients(monoChain.get < ChainPositions::LowShelf>().coefficients, lowShelfCoefficients);
-        // Peak 1
-        auto peakCoefficients1 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 0);
-        updateCoefficients(monoChain.get < ChainPositions::Peak1>().coefficients, peakCoefficients1);
-        // Peak 2
-        auto peakCoefficients2 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 1);
-        updateCoefficients(monoChain.get < ChainPositions::Peak2>().coefficients, peakCoefficients2);
-        // Peak 3
-        auto peakCoefficients3 = makePeakFilter(chainSettings, audioProcessor.getSampleRate(), 2);
-        updateCoefficients(monoChain.get < ChainPositions::Peak3>().coefficients, peakCoefficients3);
-        // HighShelf
-        auto highShelfCoefficients = makeHighShelfFilter(chainSettings, audioProcessor.getSampleRate());
-        updateCoefficients(monoChain.get < ChainPositions::HighShelf>().coefficients, highShelfCoefficients);
-        // LowPass
-        auto lowPassCoefficients = makeLowPassFilter(chainSettings, audioProcessor.getSampleRate());
-        updateCutFilter(monoChain.get < ChainPositions::LowPass>(), lowPassCoefficients, chainSettings.lowPassSlope);
-
-        // Signal a repaint
-        repaint();
-    }
-}
-
-
 std::vector<juce::Component*> SimpleEQAudioProcessorEditor::getComps()
 {
     return
@@ -265,6 +277,7 @@ std::vector<juce::Component*> SimpleEQAudioProcessorEditor::getComps()
         &lowShelfQSlider,
         &highShelfFreqSlider,
         &highShelfGainSlider,
-        &highShelfQSlider
+        &highShelfQSlider,
+        &responseCurveComponent
     };
 }
